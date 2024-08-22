@@ -33,7 +33,16 @@ def main():
     # Get credentials and create an API client
     flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
         client_secrets_file, scopes)
-    credentials = flow.run_console()
+    
+    # credentials = flow.run_console()
+    '''
+    run_console command kept failing since that function was no longer supported; after digging around trying to fix the versions in which this was supported,
+    found that google shows error in browser even after getting it to work with older versions.
+
+    with some help from chatGPT was able to figure out that flow using run_console is no longer supported, and we should instead use run_local_server, 
+    which worked and was able to display channel details in console
+    '''
+    credentials = flow.run_local_server(port=0)
     youtube = googleapiclient.discovery.build(
         api_service_name, api_version, credentials=credentials)
 
