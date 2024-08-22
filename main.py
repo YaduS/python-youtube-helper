@@ -10,6 +10,15 @@ import google_auth_oauthlib.flow
 import googleapiclient.discovery
 import googleapiclient.errors
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
+CLIENT_SECRET_FILE = os.getenv('CLIENT_SECRET_FILE')
+API_KEY = os.getenv('API_KEY')
+CHANNEL_ID = os.getenv('CHANNEL_ID')
+
+
 scopes = ["https://www.googleapis.com/auth/youtube.readonly"]
 
 def main():
@@ -19,7 +28,7 @@ def main():
 
     api_service_name = "youtube"
     api_version = "v3"
-    client_secrets_file = "YOUR_CLIENT_SECRET_FILE.json"
+    client_secrets_file = CLIENT_SECRET_FILE
 
     # Get credentials and create an API client
     flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
