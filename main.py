@@ -5,14 +5,16 @@
 # https://developers.google.com/explorer-help/code-samples#python
 
 import os
+import json
+
+from time import sleep
+from dotenv import load_dotenv
 
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
-from time import sleep
 
-from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -21,10 +23,11 @@ API_KEY = os.getenv("API_KEY")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
 PLAYLIST_ID = os.getenv("PLAYLIST_ID")
 CREDENTIALS_FILE = "token.json"
+PLAYLIST_DATA_FILE = "playlist_items.json"
 
 SCOPES = ["https://www.googleapis.com/auth/youtube.readonly"]
 API_SUBSEQUENT_CALL_DELAY = 5  # seconds
-MAX_COUNT = 2
+MAX_COUNT = 15
 
 
 def init_youtube_client():
@@ -66,25 +69,28 @@ def get_playlist_data(youtube, nextPageToken=None):
     return response
 
 
-def main():
-    global MAX_COUNT
+def write_playlist_data(playlistItems):
+    with open(PLAYLIST_DATA_FILE, "w") as json_file:
+        json.dump(playlistItems, json_file, indent=2)
 
+
+def main():
     # counter added as a fallback to nextPageToken
     counter = 0
     nextPageToken = None
+    playlistItems = []
+
     youtube = init_youtube_client()
 
     while counter < MAX_COUNT:
-
         response = get_playlist_data(youtube, nextPageToken)
+
         nextPageToken = (
             response["nextPageToken"] if "nextPageToken" in response else None
         )
+        playlistItems += response["items"]
 
-        print(response)
-        print("\n=====================================================================")
-        print(f"nextPageToken:  {nextPageToken}, \n page no: + {counter + 1}")
-        print("=====================================================================\n")
+        print(f"===================================\n fetched page: {counter + 1}")
 
         if nextPageToken == None:
             break
@@ -92,6 +98,8 @@ def main():
         sleep(API_SUBSEQUENT_CALL_DELAY)
 
         counter += 1
+
+    write_playlist_data(playlistItems)
 
 
 if __name__ == "__main__":

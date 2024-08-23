@@ -162,4 +162,5 @@ cython_debug/
 .idea/
 client_secret_*.json
 token.json
+playlist_items.json
 bkp/
