@@ -23,9 +23,10 @@ API_KEY = os.getenv("API_KEY")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
 PLAYLIST_ID = os.getenv("PLAYLIST_ID")
 CREDENTIALS_FILE = "token.json"
-PLAYLIST_DATA_FILE = "playlist_items.json"
+PLAYLIST_DATA_OUTPUT_JSON = "playlist_items.json"
 
-SCOPES = ["https://www.googleapis.com/auth/youtube.readonly"]
+# SCOPES = ["https://www.googleapis.com/auth/youtube.readonly"]
+SCOPES = ["https://www.googleapis.com/auth/youtube.force-ssl"]
 API_SUBSEQUENT_CALL_DELAY = 5  # seconds
 MAX_COUNT = 15
 
@@ -70,36 +71,81 @@ def get_playlist_data(youtube, nextPageToken=None):
 
 
 def write_playlist_data(playlistItems):
-    with open(PLAYLIST_DATA_FILE, "w") as json_file:
+    with open(PLAYLIST_DATA_OUTPUT_JSON, "w") as json_file:
         json.dump(playlistItems, json_file, indent=2)
 
 
+# def update_video_details(youtube):
+def update_video_details(youtube, details: dict, uploadVideoId):
+    # print(details, uploadVideoId)
+    request = youtube.videos().update(
+        part="snippet, status",
+        body={
+            "id": uploadVideoId,
+            "snippet": {
+                "title": details["title"],
+                "categoryId": "20",
+                "description": details["description"],
+            },
+            "status": {"selfDeclaredMadeForKids": False},
+        },
+    )
+    request.execute()
+
+
+PLAYLIST_DATA_INPUT_JSON = os.getenv("PLAYLIST_DATA_INPUT_JSON")
+PLAYLIST_UPLOAD_VIDEOS_JSON = os.getenv("PLAYLIST_UPLOAD_VIDEOS_JSON")
+
+
+def update_from_playlist_data(youtube):
+    with open(PLAYLIST_UPLOAD_VIDEOS_JSON, "r") as upload_videos_file:
+        upload_videos_data = json.load(upload_videos_file)
+        with open(PLAYLIST_DATA_INPUT_JSON, "r") as json_file:
+            playlist_data = json.load(json_file)
+            for index, item in enumerate(playlist_data):
+                videoDetails = {
+                    "title": item["snippet"]["title"],
+                    "description": item["snippet"]["description"],
+                }
+                videoId = upload_videos_data[index]["videoId"]
+                update_video_details(youtube, videoDetails, videoId)
+                print(
+                    f"================================\n Updated {videoId}; with title {videoDetails['title']}"
+                )
+                sleep(API_SUBSEQUENT_CALL_DELAY)
+
+
 def main():
+
+    youtube = init_youtube_client()
+
+    # NOTE: USE ONLY ONE OF THE BELOW SECTIONS AT A TIME. COMMENT OUT THE OTHER SECTIONS
+
+    # ========================== GET DATA FROM PLAYLIST ===========================#
+
     # counter added as a fallback to nextPageToken
     counter = 0
     nextPageToken = None
     playlistItems = []
 
-    youtube = init_youtube_client()
-
     while counter < MAX_COUNT:
         response = get_playlist_data(youtube, nextPageToken)
-
         nextPageToken = (
             response["nextPageToken"] if "nextPageToken" in response else None
         )
         playlistItems += response["items"]
-
         print(f"===================================\n fetched page: {counter + 1}")
-
         if nextPageToken == None:
             break
-
+        counter += 1
         sleep(API_SUBSEQUENT_CALL_DELAY)
 
-        counter += 1
-
     write_playlist_data(playlistItems)
+    # ================================SECTION END==================================#
+
+    # ============UPDATE VIDEO DETAILS FROM JSON FILE(PLAYLIST DATA)===============#
+    update_from_playlist_data(youtube)
+    # ================================SECTION END==================================#
 
 
 if __name__ == "__main__":
