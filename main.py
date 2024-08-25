@@ -14,6 +14,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
+from googleapiclient.http import MediaFileUpload
 
 
 load_dotenv()
@@ -24,6 +25,7 @@ CHANNEL_ID = os.getenv("CHANNEL_ID")
 PLAYLIST_ID = os.getenv("PLAYLIST_ID")
 CREDENTIALS_FILE = "token.json"
 PLAYLIST_DATA_OUTPUT_JSON = "playlist_items.json"
+
 
 # SCOPES = ["https://www.googleapis.com/auth/youtube.readonly"]
 SCOPES = ["https://www.googleapis.com/auth/youtube.force-ssl"]
@@ -115,36 +117,63 @@ def update_from_playlist_data(youtube):
                 sleep(API_SUBSEQUENT_CALL_DELAY)
 
 
+THUMBNAIL_PREFIX = os.getenv("THUMBNAIL_PREFIX")
+PLAYLIST_THUMBNAIL_FOLDER = os.getenv("PLAYLIST_THUMBNAIL_FOLDER")
+
+
+def update_thumbnail(youtube, videoId, thumbnail_path):
+    request = youtube.thumbnails().set(
+        videoId=videoId,
+        media_body=MediaFileUpload(thumbnail_path)
+    )
+    response = request.execute()
+    print(f"uploaded {thumbnail_path} for video {videoId}")
+
+
+def update_thumbnail_from_playlist_data(youtube):
+    with open(PLAYLIST_UPLOAD_VIDEOS_JSON, "r") as upload_videos_file:
+        upload_videos_data = json.load(upload_videos_file)
+        for item in upload_videos_data:
+            videoId = item["videoId"]
+            thumbnail_path = f"{PLAYLIST_THUMBNAIL_FOLDER}/{THUMBNAIL_PREFIX}{item["episode"]}.jpg"
+            update_thumbnail(youtube, videoId, thumbnail_path)
+            sleep(API_SUBSEQUENT_CALL_DELAY)
+
+
 def main():
 
     youtube = init_youtube_client()
 
-    # NOTE: USE ONLY ONE OF THE BELOW SECTIONS AT A TIME. COMMENT OUT THE OTHER SECTIONS
+    # # NOTE: USE ONLY ONE OF THE BELOW SECTIONS AT A TIME. COMMENT OUT THE OTHER SECTIONS
 
-    # ========================== GET DATA FROM PLAYLIST ===========================#
+    # # ========================== GET DATA FROM PLAYLIST ===========================#
 
-    # counter added as a fallback to nextPageToken
-    counter = 0
-    nextPageToken = None
-    playlistItems = []
+    # # counter added as a fallback to nextPageToken
+    # counter = 0
+    # nextPageToken = None
+    # playlistItems = []
 
-    while counter < MAX_COUNT:
-        response = get_playlist_data(youtube, nextPageToken)
-        nextPageToken = (
-            response["nextPageToken"] if "nextPageToken" in response else None
-        )
-        playlistItems += response["items"]
-        print(f"===================================\n fetched page: {counter + 1}")
-        if nextPageToken == None:
-            break
-        counter += 1
-        sleep(API_SUBSEQUENT_CALL_DELAY)
+    # while counter < MAX_COUNT:
+    #     response = get_playlist_data(youtube, nextPageToken)
+    #     nextPageToken = (
+    #         response["nextPageToken"] if "nextPageToken" in response else None
+    #     )
+    #     playlistItems += response["items"]
+    #     print(f"===================================\n fetched page: {counter + 1}")
+    #     if nextPageToken == None:
+    #         break
+    #     counter += 1
+    #     sleep(API_SUBSEQUENT_CALL_DELAY)
 
-    write_playlist_data(playlistItems)
-    # ================================SECTION END==================================#
+    # write_playlist_data(playlistItems)
+    # # ================================SECTION END==================================#
 
-    # ============UPDATE VIDEO DETAILS FROM JSON FILE(PLAYLIST DATA)===============#
-    update_from_playlist_data(youtube)
+    # # ============UPDATE VIDEO DETAILS FROM JSON FILE(PLAYLIST DATA)===============#
+    # update_from_playlist_data(youtube)
+    # # ================================SECTION END==================================#
+
+    # ============UPDATE VIDEO THUMBNAIL FROM PLAYLIST DATA===============#
+    update_thumbnail_from_playlist_data(youtube)
     # ================================SECTION END==================================#
 
 
